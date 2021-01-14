@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'You have to enter a name'],
-    unique: true,
     minlength: 2,
   },
   password: {
@@ -88,6 +87,7 @@ app.post('/users', async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const user = new User({ name, email, password });
+    console.log(user);
     user.save();
     res.status(200).json({ id: user._id, accessToken: user.accessToken });
   } catch (error) {
