@@ -3,8 +3,10 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   user: {
     accessToken: '',
+    name: '',
   },
   isLoggedIn: false,
+  errorMessage: '',
 };
 
 export const users = createSlice({
@@ -12,24 +14,24 @@ export const users = createSlice({
   initialState,
   reducers: {
     logIn: (state, action) => {
-      if (state.isLoggedIn) {
-        console.log('error');
-      } else {
-        state.user.accessToken = action.payload.accessToken;
-      }
+      state.user.accessToken = action.payload.accessToken;
+      state.user.name = action.payload.name;
     },
     logOut: (state, action) => {
       state.user.accessToken = '';
+      state.user.name = '';
       state.isLoggedIn = false;
     },
-
-    // Petra: La till en funktion som togglar isloggedin-state,
-    // så att vi bara aktiverar det när login är successfull!
     toggleLoggedInOut: (state, action) => {
       state.isLoggedIn = !state.isLoggedIn;
     },
+    setError: (state, action) => {
+      state.errorMessage = action.payload;
+    },
   },
 });
+
+// ----------------------------------------------------------------
 
 export const manageUser = ({ url, user }) => {
   return (dispatch) => {
@@ -44,12 +46,19 @@ export const manageUser = ({ url, user }) => {
         password: user.password,
       }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.ok) {
+          dispatch(users.actions.toggleLoggedInOut());
+        }
+        return res.json();
+      })
       .then((json) => {
-        dispatch(users.actions.logIn(json));
-
-        // Vi behöver få in en kontroll om lösenordet är fel här
-        dispatch(users.actions.toggleLoggedInOut());
+        if (json.message) {
+          dispatch(users.actions.setError(json.message));
+        } else {
+          dispatch(users.actions.logIn(json));
+          dispatch(users.actions.setError(''));
+        }
       });
   };
 };

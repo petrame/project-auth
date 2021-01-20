@@ -13,12 +13,12 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'You have to enter a name'],
-    minlength: 2,
+    minlength: [2, 'Oops, name is too short'],
   },
   password: {
     type: String,
     required: true,
-    minlength: 6,
+    minlength: [6, 'Oops, password is too short'],
   },
   email: {
     type: String,
@@ -42,11 +42,7 @@ userSchema.pre('save', async function (next) {
 
   // If the password is changed- then encrypt it
   const salt = bcrypt.genSaltSync();
-  console.log(`PRE- password before hash: ${user.password}`);
   user.password = bcrypt.hashSync(user.password, salt);
-  console.log(`PRE- password after  hash: ${user.password}`);
-
-  // Continue with the save
   next();
 });
 
@@ -62,7 +58,10 @@ const authenticateUser = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Please try again' });
+    res
+      .status(401)
+      .json({ error: 'ERROR: Something went wrong. Please try again' });
+    console.log(err);
   }
 };
 
@@ -79,7 +78,12 @@ app.use(bodyParser.json());
 
 // Start defining your routes here
 app.get('/', (req, res) => {
-  res.send('Hello world');
+  res.send('Hello and welcome to Karin and Petras user API!');
+});
+
+app.get('/users', async (req, res) => {
+  const users = await User.find();
+  res.json(users);
 });
 
 // Signup
@@ -87,13 +91,17 @@ app.post('/users', async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const user = new User({ name, email, password });
-    console.log(user);
-    user.save();
-    res.status(200).json({ id: user._id, accessToken: user.accessToken });
-  } catch (error) {
+    await user.save();
+    res
+      .status(200)
+      .json({ id: user._id, accessToken: user.accessToken, name: user.name });
+  } catch (err) {
     res
       .status(400)
-      .json({ message: 'Could not create user', errors: error.errors });
+      .json({
+        message: `ERROR: Could not create user. Make sure you've entered all the fields correctly.`,
+        errors: err,
+      });
     console.log({ error: err });
   }
 });
@@ -102,9 +110,11 @@ app.post('/users', async (req, res) => {
 app.post('/sessions', async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
   if (user && bcrypt.compareSync(req.body.password, user.password)) {
-    res.json({ id: user._id, accessToken: user.accessToken });
+    res.json({ id: user._id, accessToken: user.accessToken, name: user.name });
   } else {
-    res.status(400).json({ message: 'Could not log in' });
+    res.status(400).json({
+      message: `ERROR: Could not log in. Make sure you've entered the correct user details.`,
+    });
   }
 });
 
@@ -114,7 +124,7 @@ app.get('/private', authenticateUser);
 app.get('/private', async (req, res) => {
   const accessToken = req.header('Authorization');
   const user = await User.findOne({ accessToken: accessToken });
-  res.json({ message: `Private mode! Hello ${user.name}` });
+  res.json({ message: `☠️ The killer is: ${user.name} ☠️` });
 });
 
 // Start the server

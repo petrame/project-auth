@@ -6,7 +6,6 @@ import { users } from './reducers/users';
 import { Main } from './components/Main';
 
 const reducer = combineReducers({ users: users.reducer });
-
 const store = configureStore({ reducer });
 
 export const App = () => {
